@@ -1,0 +1,7 @@
+package edu.npic.smartBuilding.base;
+
+public enum MessageType {
+
+    SYSTEM,USER,ADMIN,MANAGER,INFO,TYPING,FINISHED,INPUT,SENSOR,TEMPERATURE,HUMIDITY,PM2_5,POWER,SWITCH
+
+}

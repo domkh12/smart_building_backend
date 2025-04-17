@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <style>
+        body {
+            font-family: Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f2f2f2;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .header {
+            padding: 10px 0;
+            margin: 20px auto;
+            border-bottom: 1px solid #ddd;
+        }
+        .sub-header{
+            width: 100px;
+            height: 100px;
+            padding: 10px;
+            border-radius: 50%;
+            background-color: #f2f2f2;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .button {
+            display: inline-block; /* Make it behave like a button */
+            padding: 10px 20px;
+            background-color: #007bff; /* A nice blue color */
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin-top: 20px;
+            cursor: pointer; /* Shows it's clickable */
+        }
+        .button:hover {
+            background-color: #0056b3; /* Darker blue on hover */
+        }
+        .logo{
+            width: 100px;
+            height: 100px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <div class="sub-header">
+            <img src="https://sps.iot.npic.edu.kh/images/logo.png" alt="npicLogo" class="logo">
+        </div>
+    </div>
+    <p>Please click the button below to verify your email address:</p>
+    <a th:href="${tokenUrl}" class="button">Verify Email</a>
+
+</div>
+</body>
+</html>

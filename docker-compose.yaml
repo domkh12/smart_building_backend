@@ -1,0 +1,47 @@
+services:
+  smart-building-api:
+    image: "smart-building-api"
+    build: .
+    container_name: smart-building-api
+    ports:
+      - 33333:8080
+    volumes:
+      - C:\NPIC\Smart_Building_API\file-server:/file-server/
+    networks:
+      - smart-building-net
+    depends_on:
+      - smart-building-db
+
+  smart-building-db:
+    image: postgres:16.4-alpine3.20
+    container_name: smart-building-db
+    ports:
+      - 3333:5432
+    environment:
+      POSTGRES_USER: udom
+      POSTGRES_PASSWORD: Domkh@#12
+      POSTGRES_DB: smart-building-system-db
+    volumes:
+      - smart-building-db:/var/lib/postgresql/data
+    networks:
+      - smart-building-net
+
+#  keycloak:
+#    container_name: keycloak-sps
+#    image: quay.io/keycloak/keycloak:26.0.5
+#    ports:
+#      - 9090:8080
+#    environment:
+#      KEYCLOAK_ADMIN: admin
+#      KEYCLOAK_ADMIN_PASSWORD: admin
+#    networks:
+#      - smart-parking-net
+#    command:
+#      - "start-dev"
+
+volumes:
+  smart-building-db:
+
+networks:
+  smart-building-net:
+    driver: bridge
