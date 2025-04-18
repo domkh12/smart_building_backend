@@ -3,10 +3,12 @@ package edu.npic.smartBuilding.features.auth;
 import com.warrenstrange.googleauth.GoogleAuthenticatorKey;
 import edu.npic.smartBuilding.domain.*;
 import edu.npic.smartBuilding.features.auth.dto.*;
+import edu.npic.smartBuilding.features.gender.GenderRepository;
 import edu.npic.smartBuilding.features.totp.TotpService;
 import edu.npic.smartBuilding.features.user.UserRepository;
 import edu.npic.smartBuilding.features.user.UserService;
 import edu.npic.smartBuilding.features.user.dto.CreateUserRegister;
+import edu.npic.smartBuilding.features.user.dto.UpdateProfileUserRequest;
 import edu.npic.smartBuilding.features.user.dto.UserDetailResponse;
 import edu.npic.smartBuilding.mapper.UserMapper;
 import edu.npic.smartBuilding.util.AuthUtil;
@@ -72,11 +74,31 @@ public class AuthServiceImpl implements AuthService{
 
     @Value("${backend.domain}")
     private String backendDomain;
+    private GenderRepository genderRepository;
 
     @Autowired
     @Qualifier("jwtEncoderRefreshToken")
     public void setJwtEnCoderRefreshToken(JwtEncoder jwtEnCoderRefreshToken){
         this.jwtEncoderRefreshToken = jwtEnCoderRefreshToken;
+    }
+
+    @Override
+    public UserDetailResponse updateProfileUser(UpdateProfileUserRequest updateProfileUserRequest) {
+        Integer id = authUtil.loggedUserId();
+        User user = userRepository.findById(id).orElseThrow(
+                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found!")
+        );
+
+        userMapper.fromUpdateProfileUserRequest(updateProfileUserRequest, user);
+
+        Gender gender = genderRepository.findById(updateProfileUserRequest.genderId()).orElseThrow(
+                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Gender not found!")
+        );
+        user.setGender(gender);
+
+        User savedUser = userRepository.save(user);
+
+        return userMapper.toUserDetailResponse(savedUser);
     }
 
     @Override
@@ -480,5 +502,10 @@ public class AuthServiceImpl implements AuthService{
 //                .build();
 
         return null;
+    }
+
+    @Autowired
+    public void setGenderRepository(GenderRepository genderRepository) {
+        this.genderRepository = genderRepository;
     }
 }

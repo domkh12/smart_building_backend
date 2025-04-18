@@ -2,6 +2,7 @@ package edu.npic.smartBuilding.features.auth;
 
 import edu.npic.smartBuilding.features.auth.dto.*;
 import edu.npic.smartBuilding.features.user.dto.CreateUserRegister;
+import edu.npic.smartBuilding.features.user.dto.UpdateProfileUserRequest;
 import edu.npic.smartBuilding.features.user.dto.UserDetailResponse;
 import jakarta.mail.MessagingException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -9,6 +10,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.ResponseEntity;
 
 public interface AuthService {
+
+    UserDetailResponse updateProfileUser(UpdateProfileUserRequest updateProfileUserRequest);
 
     ResponseEntity<Void> logout(HttpServletResponse response);
 

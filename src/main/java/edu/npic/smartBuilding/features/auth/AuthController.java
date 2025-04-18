@@ -2,6 +2,7 @@ package edu.npic.smartBuilding.features.auth;
 
 import edu.npic.smartBuilding.features.auth.dto.*;
 import edu.npic.smartBuilding.features.user.dto.CreateUserRegister;
+import edu.npic.smartBuilding.features.user.dto.UpdateProfileUserRequest;
 import edu.npic.smartBuilding.features.user.dto.UserDetailResponse;
 import jakarta.mail.MessagingException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -19,6 +20,13 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
+
+    @PreAuthorize("hasAnyAuthority('ROLE_MANAGER', 'ROLE_ADMIN', 'ROLE_USER')")
+    @PutMapping("/profiles")
+    @ResponseStatus(HttpStatus.CREATED)
+    UserDetailResponse updateProfileUser(@RequestBody UpdateProfileUserRequest updateProfileUserRequest){
+        return authService.updateProfileUser(updateProfileUserRequest);
+    }
 
     @PostMapping("/verify-sites")
     @ResponseStatus(HttpStatus.CREATED)
