@@ -18,7 +18,7 @@ public class GenderController {
 
     private final GenderService genderService;
 
-    @PreAuthorize("hasAnyAuthority('ROLE_MANAGER', 'ROLE_ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROLE_MANAGER', 'ROLE_ADMIN', 'ROLE_USER')")
     @GetMapping
     @ResponseStatus(HttpStatus.OK)
     List<GenderResponse> findAll(){

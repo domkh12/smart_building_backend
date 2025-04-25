@@ -231,6 +231,7 @@ public class UserServiceImpl implements UserService {
         if (userRepository.existsByPhoneNumber(updateUserRequest.phoneNumber()) && !user.getPhoneNumber().equals(updateUserRequest.phoneNumber())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Phone number already exists");
         }
+
         userMapper.fromUpdateUserRequest(updateUserRequest, user);
 
         if (!updateUserRequest.isVerified()) {
@@ -245,7 +246,6 @@ public class UserServiceImpl implements UserService {
 
         if (!updateUserRequest.isDeleted()) {
             user.setStatus(String.valueOf(Status.Active));
-
         } else {
             user.setStatus(String.valueOf(Status.Banned));
         }
@@ -253,10 +253,12 @@ public class UserServiceImpl implements UserService {
         Gender gender = genderRepository.findById(updateUserRequest.genderId()).orElseThrow(() -> new ResponseStatusException(
                 HttpStatus.NOT_FOUND, "Gender not found!"
         ));
+
         user.setGender(gender);
 
         if (updateUserRequest.profileImage() != null) {
-            deleteImageFile(user.getProfileImage());
+//            deleteImageFile(user.getProfileImage());
+            user.setProfileImage(updateUserRequest.profileImage());
         }
 
         List<Room> rooms = roomRepository.findByIdIn(updateUserRequest.roomId());

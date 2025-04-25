@@ -22,6 +22,13 @@ public class AuthController {
     private final AuthService authService;
 
     @PreAuthorize("hasAnyAuthority('ROLE_MANAGER', 'ROLE_ADMIN', 'ROLE_USER')")
+    @ResponseStatus(HttpStatus.CREATED)
+    @PostMapping("/change-password")
+    void changePassword(@RequestBody ChangePasswordRequest changePasswordRequest){
+        authService.changePassword(changePasswordRequest);
+    }
+
+    @PreAuthorize("hasAnyAuthority('ROLE_MANAGER', 'ROLE_ADMIN', 'ROLE_USER')")
     @PutMapping("/profiles")
     @ResponseStatus(HttpStatus.CREATED)
     UserDetailResponse updateProfileUser(@RequestBody UpdateProfileUserRequest updateProfileUserRequest){
@@ -67,21 +74,21 @@ public class AuthController {
         return authService.login(loginRequest, response);
     }
 
-    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_USER', 'ROLE_MANAGER')")
     @PostMapping("/enable-2fa")
     @ResponseStatus(HttpStatus.CREATED)
     QrCodeResponse enable2FA(){
         return authService.enable2FA();
     }
 
-    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_USER')")
     @PostMapping("/disable-2fa")
     @ResponseStatus(HttpStatus.CREATED)
     MessageResponse disable2FA(){
         return authService.disable2FA();
     }
 
-    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_USER')")
     @PostMapping("/verify-2fa")
     @ResponseStatus(HttpStatus.CREATED)
     MessageResponse verify2FA(@RequestParam Integer code){

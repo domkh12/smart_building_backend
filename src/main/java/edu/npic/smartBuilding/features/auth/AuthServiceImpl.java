@@ -83,6 +83,22 @@ public class AuthServiceImpl implements AuthService{
     }
 
     @Override
+    public void changePassword(ChangePasswordRequest changePasswordRequest) {
+        Integer userId = authUtil.loggedUserId();
+
+        User user = userRepository.findById(userId).orElseThrow(
+                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found")
+        );
+
+        if(!passwordEncoder.matches(changePasswordRequest.oldPassword(), user.getPassword())){
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Current password incorrect");
+        }
+
+        user.setPassword(passwordEncoder.encode(changePasswordRequest.newPassword()));
+        userRepository.save(user);
+    }
+
+    @Override
     public UserDetailResponse updateProfileUser(UpdateProfileUserRequest updateProfileUserRequest) {
         Integer id = authUtil.loggedUserId();
         User user = userRepository.findById(id).orElseThrow(
