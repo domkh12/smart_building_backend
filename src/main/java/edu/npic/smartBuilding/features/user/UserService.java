@@ -44,4 +44,8 @@ public interface UserService {
     ResponseEntity<?> find2faSecretCode();
 
     UserDetailResponse findUserById(Integer id);
+
+    Optional<User> findByEmail(String email);
+
+    void registerUser(User newUser);
 }

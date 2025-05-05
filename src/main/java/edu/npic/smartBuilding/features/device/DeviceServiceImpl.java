@@ -11,6 +11,7 @@ import edu.npic.smartBuilding.features.deviceType.DeviceTypeRepository;
 import edu.npic.smartBuilding.features.event.EventRepository;
 import edu.npic.smartBuilding.features.room.RoomRepository;
 import edu.npic.smartBuilding.mapper.DeviceMapper;
+import edu.npic.smartBuilding.util.AuthUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -39,17 +40,33 @@ public class DeviceServiceImpl implements DeviceService{
     private final EventRepository eventRepository;
     private final RoomRepository roomRepository;
     private final BuildingRepository buildingRepository;
+    private final AuthUtil authUtil;
 
     @Override
     public DeviceResponse getDeviceId(Integer id) {
-        Device device = deviceRepository.findById(id).orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Device not found!")
-        );
+        boolean isAdmin = authUtil.isAdminLoggedUser();
+        boolean isManager = authUtil.isManagerLoggedUser();
+        List<Long> roomIds = authUtil.roomIdOfLoggedUser();
+
+        Device device = new Device();
+        if (isManager){
+            device = deviceRepository.findById(id).orElseThrow(
+                    () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Device not found!")
+            );
+        }else if (isAdmin){
+            device = deviceRepository.findDeviceByIdAndRoomIds(id, roomIds).orElseThrow(
+                    () -> new ResponseStatusException(HttpStatus.FORBIDDEN, "You don't have permission to view this device")
+            );
+        }
+
         return deviceMapper.toDeviceResponse(device);
     }
 
     @Override
     public Page<DeviceResponse> filterDevice(int pageNo, int pageSize, String keywords, List<Integer> deviceTypeId, List<Integer> buildingId) {
+        boolean isManager = authUtil.isManagerLoggedUser();
+        boolean isAdmin = authUtil.isAdminLoggedUser();
+        List<Long> roomIds = authUtil.roomIdOfLoggedUser();
 
         if(pageNo < 0){
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Page number must be greater than zero");
@@ -70,7 +87,13 @@ public class DeviceServiceImpl implements DeviceService{
             buildingIds = buildingId;
         }
 
-        Page<Device> devices = deviceRepository.filterDevice(keywords, deviceTypeIds, buildingIds, pageRequest);
+        Page<Device> devices = Page.empty();
+
+        if (isManager){
+            devices = deviceRepository.filterDevice(keywords, deviceTypeIds, buildingIds, pageRequest);
+        }else if (isAdmin){
+            devices = deviceRepository.filterDeviceRoleAdmin(keywords, deviceTypeIds, buildingIds, roomIds, pageRequest);
+        }
 
         return devices.map(deviceMapper::toDeviceResponse);
     }
@@ -149,16 +172,27 @@ public class DeviceServiceImpl implements DeviceService{
 
     @Override
     public Page<DeviceResponse> findAll(int pageNo, int pageSize) {
+        boolean isManager = authUtil.isManagerLoggedUser();
+        boolean isAdmin = authUtil.isAdminLoggedUser();
+        List<Long> roomIds = authUtil.roomIdOfLoggedUser();
+
         if (pageNo <= 0){
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Page number must be more than 0");
         }
         if (pageSize <= 0){
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Page Size must be more than 0");
         }
+
         Sort sort = Sort.by(Sort.Direction.DESC, "id");
         PageRequest pageRequest = PageRequest.of(pageNo - 1 , pageSize, sort);
 
-        Page<Device> devicePage = deviceRepository.findAll(pageRequest);
+        Page<Device> devicePage = Page.empty();
+
+        if (isManager){
+            devicePage = deviceRepository.findAll(pageRequest);
+        }else if (isAdmin){
+            devicePage = deviceRepository.findDeviceByRoomIds(roomIds, pageRequest);
+        }
 
         List<DeviceResponse> deviceResponses = devicePage.getContent().stream()
                 .map(device -> {
@@ -174,7 +208,7 @@ public class DeviceServiceImpl implements DeviceService{
                 })
                 .toList();
 
-        return new PageImpl<>(deviceResponses, pageRequest, devicePage.getTotalElements()); // Return PageImpl with DeviceResponses
+        return new PageImpl<>(deviceResponses, pageRequest, devicePage.getTotalElements());
     }
 
     @Override

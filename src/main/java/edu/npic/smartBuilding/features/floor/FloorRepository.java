@@ -15,6 +15,10 @@ import java.util.Optional;
 public interface FloorRepository extends JpaRepository<Floor, Integer> {
 
     @Query("select f from Floor f left join f.rooms rooms where rooms.id in ?1")
+    Page<Floor> findFloorsByRoomIds(Collection<Long> ids, Pageable pageable);
+
+
+    @Query("select f from Floor f left join f.rooms rooms where rooms.id in ?1")
     List<Floor> findByRooms_IdIn(Collection<Long> ids);
 
     long countByRooms_Id(Integer id);

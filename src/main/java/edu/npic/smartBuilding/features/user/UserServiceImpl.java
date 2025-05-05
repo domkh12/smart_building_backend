@@ -82,6 +82,19 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    public Optional<User> findByEmail(String email) {
+        User user = userRepository.findByEmail(email).orElseThrow(
+                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found!")
+        );
+        return Optional.of(user);
+    }
+
+    @Override
+    public void registerUser(User newUser) {
+        userRepository.save(newUser);
+    }
+
+    @Override
     public GetAllUserResponse filterUser(String keywords, List<Integer> roleId, String status, List<Integer> signupMethodId, int pageNo, int pageSize) {
         boolean isAdmin = authUtil.isAdminLoggedUser();
         boolean isManager = authUtil.isManagerLoggedUser();
@@ -519,9 +532,9 @@ public class UserServiceImpl implements UserService {
     private void sendEmailVerification(User user, Integer expireMinute) throws MessagingException {
         EmailVerification emailVerification = new EmailVerification();
         emailVerification.setEmail(user.getEmail());
-        emailVerification.setExpiryTime(LocalTime.now().plusMinutes(expireMinute));
+        emailVerification.setExpiryTime(LocalDateTime.now().plusMinutes(expireMinute));
         emailVerification.setUser(user);
-        emailVerification.setVerificationCode(RandomOtp.generateSecurityCode());
+//        emailVerification.setVerificationCode(RandomOtp.generateSecurityCode());
         emailVerification.setToken(RandomUtil.randomUuidToken());
         emailVerificationRepository.save(emailVerification);
 

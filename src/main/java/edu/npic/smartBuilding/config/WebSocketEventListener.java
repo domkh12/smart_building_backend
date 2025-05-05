@@ -1,10 +1,12 @@
 package edu.npic.smartBuilding.config;
 
 import edu.npic.smartBuilding.features.user.UserServiceImpl;
+import edu.npic.smartBuilding.features.user.dto.IsOnlineRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
+import org.springframework.messaging.support.GenericMessage;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.messaging.SessionConnectEvent;
 import org.springframework.web.socket.messaging.SessionDisconnectEvent;
@@ -20,40 +22,31 @@ public class WebSocketEventListener {
 
     @EventListener
     public void handleWebSocketConnectListener(SessionConnectEvent event) {
-        StompHeaderAccessor headerAccessor = StompHeaderAccessor.wrap(event.getMessage());
-        String sessionId = headerAccessor.getSessionId();
-        String roomId = headerAccessor.getFirstNativeHeader("BUILDING_ROOM_ID");
-        log.info("Received Headers: {}", headerAccessor.getFirstNativeHeader("BUILDING_ROOM_ID"));
-
-        if (roomId == null) {
-            roomId = "unknown_room";
+        StompHeaderAccessor accessor = StompHeaderAccessor.wrap(event.getMessage());
+        String userId = accessor.getFirstNativeHeader("id");
+        if (userId != null) {
+            Objects.requireNonNull(accessor.getSessionAttributes()).put("userId", userId);
+            userServiceImpl.connectedUsers(Integer.valueOf(userId), IsOnlineRequest.builder().isOnline(true).build());
         }
-
-        Objects.requireNonNull(headerAccessor.getSessionAttributes()).put("roomId", roomId);
-
-        log.info("New WebSocket connection established: sessionId={}, roomId={}", sessionId, roomId);
     }
 
     @EventListener
     public void handleWebSocketDisconnectListener(SessionDisconnectEvent event) {
-        StompHeaderAccessor headerAccessor = StompHeaderAccessor.wrap(event.getMessage());
-        String sessionId = headerAccessor.getSessionId();
+        StompHeaderAccessor accessor = StompHeaderAccessor.wrap(event.getMessage());
+        log.info("Received a new web socket disconnect event: {}", event.getMessage());
 
-        // Retrieve stored roomId from session attributes
-        String roomId = (String) Objects.requireNonNull(headerAccessor.getSessionAttributes()).remove("roomId");
+        // Retrieve userId from session attributes
+        Object userIdObj = accessor.getSessionAttributes() != null
+                ? accessor.getSessionAttributes().get("userId")
+                : null;
 
-        if (roomId != null) {
-            log.info("WebSocket disconnected: sessionId={}, roomId={}", sessionId, roomId);
-            performActionOnDisconnect(roomId);
+        if (userIdObj != null) {
+            String userId = userIdObj.toString();
+            log.info("User disconnected: {}", userId);
+            userServiceImpl.connectedUsers(Integer.valueOf(userId), IsOnlineRequest.builder().isOnline(false).build());
         } else {
-            log.warn("WebSocket disconnected but session data not found: sessionId={}", sessionId);
+            log.warn("No userId found in session attributes during disconnect.");
         }
-    }
-
-    private void performActionOnDisconnect(String roomId) {
-        // Custom logic for when a user/device disconnects
-        log.info("Performing action for disconnected room: {}", roomId);
-        // Example: Send alert, update database, etc.
     }
 
 }

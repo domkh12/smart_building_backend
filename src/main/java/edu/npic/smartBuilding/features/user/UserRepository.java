@@ -12,6 +12,7 @@ import java.util.Optional;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, Integer> {
+
     @Query("""
             select u from User u inner join u.roles roles inner join u.rooms rooms
             where u.id <> ?1

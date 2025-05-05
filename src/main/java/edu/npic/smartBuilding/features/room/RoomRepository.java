@@ -14,7 +14,8 @@ import java.util.Optional;
 @Repository
 public interface RoomRepository extends JpaRepository<Room, Integer> {
 
-
+    @Query("select r from Room r where r.id in ?1")
+    Page<Room> findRoomByIds(Collection<Long> ids, Pageable pageable);
 
     @Query("select count(r) from Room r where r.id = ?1")
     long countRoomByRoomId(Integer id);

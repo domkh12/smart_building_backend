@@ -12,6 +12,7 @@ import edu.npic.smartBuilding.features.user.dto.UpdateProfileUserRequest;
 import edu.npic.smartBuilding.features.user.dto.UserDetailResponse;
 import edu.npic.smartBuilding.mapper.UserMapper;
 import edu.npic.smartBuilding.util.AuthUtil;
+import edu.npic.smartBuilding.util.EmailService;
 import edu.npic.smartBuilding.util.JwtUtils;
 import edu.npic.smartBuilding.util.RandomOtp;
 import jakarta.mail.MessagingException;
@@ -68,18 +69,72 @@ public class AuthServiceImpl implements AuthService{
     private final AuthUtil authUtil;
     private final UserService userService;
     private final TotpService totpService;
+    private final EmailService emailService;
     private final JwtUtils jwtUtils;
+
     @Value("${spring.mail.username}")
     private String adminMail;
 
     @Value("${backend.domain}")
     private String backendDomain;
+
+    @Value("${frontend.url}")
+    String frontendUrl;
+
     private GenderRepository genderRepository;
 
     @Autowired
     @Qualifier("jwtEncoderRefreshToken")
     public void setJwtEnCoderRefreshToken(JwtEncoder jwtEnCoderRefreshToken){
         this.jwtEncoderRefreshToken = jwtEnCoderRefreshToken;
+    }
+
+    @Override
+    public MessageResponse resetPassword(ResetPasswordRequest resetPasswordRequest) {
+        EmailVerification emailVerification = emailVerificationRepository.findByToken(resetPasswordRequest.token()).orElseThrow(
+                () -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid reset token!")
+        );
+
+        if (emailVerification.isUsed()){
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Token already used!");
+        }
+
+        if (emailVerification.getExpiryTime().isBefore(LocalDateTime.now())){
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Token already expired!");
+        }
+
+        User user = emailVerification.getUser();
+        log.info("User: {}", user.getEmail());
+        user.setPassword(passwordEncoder.encode(resetPasswordRequest.newPassword()));
+        userRepository.save(user);
+
+        emailVerificationRepository.delete(emailVerification);
+
+        return MessageResponse.builder().message("Password reset successfully.").build();
+    }
+
+    @Override
+    public MessageResponse forgotPassword(String email) {
+        User user = userRepository.findByEmail(email).orElseThrow(
+                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found!")
+        );
+
+        Optional<EmailVerification> oldEmailVerification = emailVerificationRepository.findByUser(user);
+        oldEmailVerification.ifPresent(emailVerificationRepository::delete);
+
+        String token = UUID.randomUUID().toString();
+
+        EmailVerification emailVerification = new EmailVerification();
+        emailVerification.setEmail(email);
+        emailVerification.setUser(user);
+        emailVerification.setExpiryTime(LocalDateTime.now().plusHours(12));
+        emailVerification.setToken(token);
+        emailVerification.setUsed(false);
+        emailVerificationRepository.save(emailVerification);
+        String resetUrl = frontendUrl + "/reset-password?token=" + token;
+//        email send
+        emailService.sendPasswordResetEmail(email, resetUrl);
+        return MessageResponse.builder().message("Password reset email send!").build();
     }
 
     @Override
@@ -158,6 +213,7 @@ public class AuthServiceImpl implements AuthService{
                 .stream()
                 .map(GrantedAuthority::getAuthority)
                 .collect(Collectors.joining(" "));
+
         log.info("log4");
         log.info("New Scope: {}", scope);
         log.info("Auth: {}", auth);
@@ -243,14 +299,14 @@ public class AuthServiceImpl implements AuthService{
                 )
         );
 
-        if (!emailVerification.getVerificationCode().equals(verifyRequest.verificationCode())){
-            throw new ResponseStatusException(
-                    HttpStatus.UNAUTHORIZED,
-                    "Verification Code invalid"
-            );
-        }
+//        if (!emailVerification.getVerificationCode().equals(verifyRequest.verificationCode())){
+//            throw new ResponseStatusException(
+//                    HttpStatus.UNAUTHORIZED,
+//                    "Verification Code invalid"
+//            );
+//        }
 
-        if(LocalTime.now().isAfter(emailVerification.getExpiryTime())){
+        if(LocalDateTime.now().isAfter(emailVerification.getExpiryTime())){
             throw new ResponseStatusException(
                     HttpStatus.UNAUTHORIZED,
                     "Verification Expired"
@@ -263,7 +319,6 @@ public class AuthServiceImpl implements AuthService{
 
     @Override
     public ResponseEntity<JwtResponse> login(LoginRequest loginRequest, HttpServletResponse response) {
-        System.out.println("email:"+loginRequest.email());
 
         Authentication auth = new UsernamePasswordAuthenticationToken(
                 loginRequest.email(),
@@ -272,6 +327,14 @@ public class AuthServiceImpl implements AuthService{
 
         User user = userRepository.findByEmail(loginRequest.email())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+        if (user.getIsTwoFactorEnabled()){
+            return ResponseEntity.ok(JwtResponse.builder()
+                    .tokenType("")
+                    .accessToken("")
+                    .required2FA(true)
+                    .build());
+        }
 
         List<Integer> roomId = user.getRooms().stream().map(Room::getId).toList();
 
@@ -337,6 +400,7 @@ public class AuthServiceImpl implements AuthService{
         return ResponseEntity.ok(JwtResponse.builder()
                 .tokenType("Bearer")
                 .accessToken(accessToken)
+                .required2FA(false)
                 .build());
     }
 
@@ -374,21 +438,21 @@ public class AuthServiceImpl implements AuthService{
 
         userRepository.save(user);
 
-        EmailVerification emailVerification = new EmailVerification();
-        emailVerification.setEmail(user.getEmail());
-        emailVerification.setExpiryTime(LocalTime.now().plusMinutes(3));
-        emailVerification.setUser(user);
-        emailVerification.setVerificationCode(RandomOtp.generateSecurityCode());
-        emailVerificationRepository.save(emailVerification);
+//        EmailVerification emailVerification = new EmailVerification();
+//        emailVerification.setEmail(user.getEmail());
+//        emailVerification.setExpiryTime(LocalDateTime.now().plusMinutes(3));
+//        emailVerification.setUser(user);
+//        emailVerification.setVerificationCode(RandomOtp.generateSecurityCode());
+//        emailVerificationRepository.save(emailVerification);
+//
+//        MimeMessage mimeMessage = mailSender.createMimeMessage();
+//        MimeMessageHelper helper = new MimeMessageHelper(mimeMessage);
+//        helper.setSubject("Email Verification - SPS");
+//        helper.setTo(user.getEmail());
+//        helper.setFrom(adminMail);
+//        helper.setText(emailVerification.getVerificationCode());
 
-        MimeMessage mimeMessage = mailSender.createMimeMessage();
-        MimeMessageHelper helper = new MimeMessageHelper(mimeMessage);
-        helper.setSubject("Email Verification - SPS");
-        helper.setTo(user.getEmail());
-        helper.setFrom(adminMail);
-        helper.setText(emailVerification.getVerificationCode());
-
-        mailSender.send(mimeMessage);
+//        mailSender.send(mimeMessage);
     }
 
     @Override
@@ -426,15 +490,36 @@ public class AuthServiceImpl implements AuthService{
     }
 
     @Override
-    public MessageResponse verify2FALogin(Integer code, String token, HttpServletResponse response) {
-        String email = jwtUtils.getEmailFromToken(token);
-        User user = userRepository.findByEmail(email).get();
+    public JwtResponse verify2FALogin(Integer code, String email, HttpServletResponse response) {
+        User user = userRepository.findByEmail(email).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));;
         boolean isValid = userService.validate2FACode(user.getId(), code);
         if (isValid){
 
             userService.enable2FA(user.getId());
-            // create access token clains set
+
+            List<Integer> roomId = user.getRooms().stream().map(Room::getId).toList();
+
+            // ADMIN MANAGER USER
+            String scope = user.getRoles().stream()
+                    .map(role -> "ROLE_" + role.getName())
+                    .collect(Collectors.joining(" "));
+
+
             Instant now = Instant.now();
+
+            // Create access token claims set
+            JwtClaimsSet jwtClaimsSet = JwtClaimsSet.builder()
+                    .id(user.getEmail())
+                    .issuedAt(now)
+                    .issuer("web")
+                    .audience(List.of("nextjs","reactjs"))
+                    .subject("Access Token")
+                    .expiresAt(now.plus(15, ChronoUnit.MINUTES))
+                    .claim("scope", scope)
+                    .claim("id", user.getId())
+                    .claim("isEnabledTwoFA",user.getIsTwoFactorEnabled())
+                    .claim("roomId", roomId)
+                    .build();
 
             // Create refresh token claims set
             JwtClaimsSet jwtClaimsSetRefreshToken = JwtClaimsSet.builder()
@@ -446,11 +531,14 @@ public class AuthServiceImpl implements AuthService{
                     .expiresAt(now.plus(7, ChronoUnit.DAYS))
                     .build();
 
+            JwtEncoderParameters jwtEncoderParameters = JwtEncoderParameters.from(jwtClaimsSet);
+            Jwt jwt = jwtEncoder.encode(jwtEncoderParameters);
             JwtEncoderParameters jwtEncoderParametersRefreshToken = JwtEncoderParameters.from(jwtClaimsSetRefreshToken);
             Jwt jwtRefreshToken = jwtEncoderRefreshToken.encode(jwtEncoderParametersRefreshToken);
+            String accessToken = jwt.getTokenValue();
             String refreshToken = jwtRefreshToken.getTokenValue();
 
-            // Set refresh token as an httpOnly cookie
+            // Set the refresh token as an httpOnly cookie
             ResponseCookie refreshTokenCookie = ResponseCookie.from("refreshToken", refreshToken)
                     .httpOnly(true)
                     .secure(true)
@@ -459,8 +547,8 @@ public class AuthServiceImpl implements AuthService{
                     .build();
 
             response.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString());
-            return MessageResponse.builder()
-                    .message("Verified 2FA")
+            return JwtResponse.builder()
+                    .accessToken(accessToken)
                     .build();
         }else {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid 2FA code");

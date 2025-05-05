@@ -11,6 +11,10 @@ import org.springframework.http.ResponseEntity;
 
 public interface AuthService {
 
+    MessageResponse resetPassword(ResetPasswordRequest resetPasswordRequest);
+
+    MessageResponse forgotPassword(String email);
+
     UserDetailResponse updateProfileUser(UpdateProfileUserRequest updateProfileUserRequest);
 
     ResponseEntity<Void> logout(HttpServletResponse response);
@@ -29,7 +33,7 @@ public interface AuthService {
 
     MessageResponse verify2FA(Integer code);
 
-    MessageResponse verify2FALogin(Integer code, String token,HttpServletResponse response);
+    JwtResponse verify2FALogin(Integer code, String email, HttpServletResponse response);
 
     UserDetailResponse getProfileUser();
 

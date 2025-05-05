@@ -20,14 +20,14 @@ public class DeviceController {
 
     private final DeviceService deviceService;
 
-    @PreAuthorize("hasAuthority('ROLE_MANAGER')")
+    @PreAuthorize("hasAnyAuthority('ROLE_MANAGER', 'ROLE_ADMIN')")
     @GetMapping("/{id}")
     @ResponseStatus(HttpStatus.OK)
     DeviceResponse getDeviceById(@PathVariable Integer id) {
         return deviceService.getDeviceId(id);
     }
 
-    @PreAuthorize("hasAuthority('ROLE_MANAGER')")
+    @PreAuthorize("hasAnyAuthority('ROLE_MANAGER', 'ROLE_ADMIN')")
     @GetMapping("/filters")
     @ResponseStatus(HttpStatus.OK)
     Page<DeviceResponse> filterDevice(
@@ -68,7 +68,7 @@ public class DeviceController {
         return deviceService.createManyDevices(devicesRequest);
     }
 
-    @PreAuthorize("hasAuthority('ROLE_MANAGER')")
+    @PreAuthorize("hasAnyAuthority('ROLE_MANAGER', 'ROLE_ADMIN')")
     @GetMapping
     @ResponseStatus(HttpStatus.OK)
     Page<DeviceResponse> findAll(

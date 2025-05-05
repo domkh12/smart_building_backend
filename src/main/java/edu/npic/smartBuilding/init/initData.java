@@ -42,7 +42,7 @@ public class initData {
     private final RoomRepository roomRepository;
     private final EventRepository eventRepository;
 
-    @PostConstruct
+//    @PostConstruct
     public void init() {
         try {
             initBuildingData();

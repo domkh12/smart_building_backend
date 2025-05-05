@@ -21,6 +21,18 @@ public class AuthController {
 
     private final AuthService authService;
 
+    @PostMapping("/reset-password")
+    @ResponseStatus(HttpStatus.CREATED)
+    MessageResponse resetPassword(@RequestBody ResetPasswordRequest resetPasswordRequest){
+        return authService.resetPassword(resetPasswordRequest);
+    }
+
+    @PostMapping("/forgot-password")
+    @ResponseStatus(HttpStatus.CREATED)
+    MessageResponse forgotPassword(@RequestParam String email) {
+        return authService.forgotPassword(email);
+    }
+
     @PreAuthorize("hasAnyAuthority('ROLE_MANAGER', 'ROLE_ADMIN', 'ROLE_USER')")
     @ResponseStatus(HttpStatus.CREATED)
     @PostMapping("/change-password")
@@ -97,11 +109,11 @@ public class AuthController {
 
     @PostMapping("/verify-2fa-login")
     @ResponseStatus(HttpStatus.CREATED)
-    MessageResponse verify2FALogin(
+    JwtResponse verify2FALogin(
             @RequestParam Integer code,
-            @RequestParam String token,
+            @RequestParam String email,
             HttpServletResponse response){
-        return authService.verify2FALogin(code,token,response);
+        return authService.verify2FALogin(code,email,response);
     }
 
 }

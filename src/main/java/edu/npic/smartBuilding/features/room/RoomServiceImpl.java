@@ -22,10 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -45,18 +42,33 @@ public class RoomServiceImpl implements RoomService {
         Room room = roomRepository.findById(id).orElseThrow(
                 () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Room not found!")
         );
-        Floor floor = floorRepository.findById(id).orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Floor not found!")
-        );
-        floor.setRoomQty(floor.getRoomQty() - 1);
+        Floor floor = room.getFloor();
+        if (floor != null) {
+            floor.setRoomQty(floor.getRoomQty() - 1);
+            floorRepository.save(floor);
+        }
         roomRepository.delete(room);
     }
 
     @Override
     public RoomResponse getRoomById(Integer id) {
-        Room room = roomRepository.findById(id).orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Room not found!")
-        );
+        boolean isAdmin = authUtil.isAdminLoggedUser();
+        boolean isManager = authUtil.isManagerLoggedUser();
+        boolean isUser = authUtil.isUserLoggedUser();
+        List<Long> roomIds = authUtil.roomIdOfLoggedUser();
+
+        Room room = new Room();
+
+        if (isManager) {
+            room = roomRepository.findById(id).orElseThrow(
+                    () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Room not found!")
+            );
+        }else if (isAdmin || isUser) {
+            if (!roomIds.contains(Long.valueOf(id))) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You don't have permission to access this room!");
+            }
+            room = roomRepository.findById(id).orElseThrow();
+        }
 
         room.getDevices().forEach(device -> {
             List<Event> sortedLimitedEvents = device.getEvents().stream()
@@ -132,6 +144,10 @@ public class RoomServiceImpl implements RoomService {
 
     @Override
     public Page<RoomResponse> findAll(int pageNo, int pageSize) {
+        boolean isAdmin = authUtil.isAdminLoggedUser();
+        boolean isManager = authUtil.isManagerLoggedUser();
+        boolean isUser = authUtil.isUserLoggedUser();
+        List<Long> roomIds = authUtil.roomIdOfLoggedUser();
 
         if (pageNo <= 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Page number must be more than 0");
@@ -143,7 +159,12 @@ public class RoomServiceImpl implements RoomService {
 
         Sort sort = Sort.by(Sort.Direction.DESC, "id");
         PageRequest pageRequest = PageRequest.of(pageNo - 1, pageSize, sort);
-        Page<Room> rooms = roomRepository.findAll(pageRequest);
+        Page<Room> rooms = Page.empty();
+        if (isManager) {
+             rooms = roomRepository.findAll(pageRequest);
+        }else if (isAdmin || isUser) {
+            rooms = roomRepository.findRoomByIds(roomIds, pageRequest);
+        }
 
         return rooms.map(roomMapper::toRoomResponse);
     }

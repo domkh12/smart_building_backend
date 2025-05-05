@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 
 @Setter
@@ -19,15 +21,13 @@ public class EmailVerification {
     @Column(nullable = false)
     private String email;
     @Column(nullable = false)
-    private String verificationCode;
+    private LocalDateTime expiryTime;
     @Column(nullable = false)
-    private LocalTime expiryTime;
-    @Column(nullable = false)
-    private boolean verified;
-    @Column(nullable = false)
+    private boolean used;
+    @Column(nullable = false, unique = true)
     private String token;
 
-//    relationship
+    //    relationship
     @OneToOne
     private User user;
 
