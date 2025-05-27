@@ -1,5 +1,6 @@
 package edu.npic.smartBuilding.features.analysis;
 
+import edu.npic.smartBuilding.features.analysis.dto.AnalysisResponse;
 import edu.npic.smartBuilding.features.analysis.dto.PowerAnalysisResponse;
 import edu.npic.smartBuilding.features.analysis.dto.TotalCountResponse;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +17,14 @@ import java.util.List;
 @RequiredArgsConstructor
 public class AnalysisController {
     private final AnalysisService analysisService;
+
+    @PreAuthorize("hasAnyAuthority('ROLE_MANAGER', 'ROLE_ADMIN')")
+    @GetMapping
+    @ResponseStatus(HttpStatus.OK)
+    AnalysisResponse getAnalysis(@RequestParam LocalDate date_from,
+                                 @RequestParam LocalDate date_to) {
+        return analysisService.getAnalysis(date_from, date_to);
+    }
 
     @PreAuthorize("hasAnyAuthority('ROLE_MANAGER', 'ROLE_ADMIN')")
     @GetMapping("/total-counts")

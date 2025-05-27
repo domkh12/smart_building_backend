@@ -25,6 +25,7 @@ repositories {
 
 dependencies {
 
+    implementation 'org.springframework.integration:spring-integration-mqtt:6.4.4'
     implementation 'org.modelmapper:modelmapper:2.4.5'
 
     implementation 'com.warrenstrange:googleauth:1.4.0'
@@ -32,7 +33,6 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
 
     implementation 'org.springframework.security:spring-security-messaging'
-
     implementation 'org.springframework.boot:spring-boot-starter-websocket'
 
     implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'

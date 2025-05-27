@@ -1,5 +1,6 @@
 package edu.npic.smartBuilding.features.device;
 
+import edu.npic.smartBuilding.base.DeviceStatus;
 import edu.npic.smartBuilding.features.device.dto.DeviceRequest;
 import edu.npic.smartBuilding.features.device.dto.DeviceResponse;
 import edu.npic.smartBuilding.features.hardware.dto.DeviceResponseHardware;
@@ -9,6 +10,8 @@ import org.springframework.data.domain.Page;
 import java.util.List;
 
 public interface DeviceService {
+
+    void updateStatusDeviceByRoomId(Integer roomId, DeviceStatus status);
 
     DeviceResponse getDeviceId(Integer id);
 

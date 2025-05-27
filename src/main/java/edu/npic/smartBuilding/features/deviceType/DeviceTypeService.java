@@ -8,6 +8,12 @@ import java.util.List;
 
 public interface DeviceTypeService {
 
+    DeviceTypeResponse findById(Integer id);
+
+    void delete(Integer id);
+
+    DeviceTypeResponse update(Integer id, DeviceTypeRequest deviceTypeRequest);
+
     List<DeviceTypeResponse> findAll();
 
     DeviceTypeResponse create(DeviceTypeRequest deviceTypeRequest);

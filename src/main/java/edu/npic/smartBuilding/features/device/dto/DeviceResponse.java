@@ -2,6 +2,7 @@ package edu.npic.smartBuilding.features.device.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import edu.npic.smartBuilding.base.DeviceStatus;
 import edu.npic.smartBuilding.features.deviceType.dto.DeviceTypeResponse;
 import edu.npic.smartBuilding.features.event.dto.EventResponse;
 import edu.npic.smartBuilding.features.floor.dto.FloorResponse;
@@ -19,6 +20,7 @@ public record DeviceResponse(
     List<String> value,
     @JsonFormat(pattern = "dd/MMM/yyyy hh:mma")
     LocalDateTime createdAt,
+    DeviceStatus status,
     RoomResponseForDevice room,
     DeviceTypeResponse deviceType,
     List<EventResponse> events

@@ -3,6 +3,7 @@ services:
 #    image: "smart-building-api"
 #    build: .
 #    container_name: smart-building-api
+#    restart: unless-stopped
 #    ports:
 #      - 33333:8080
 #    volumes:

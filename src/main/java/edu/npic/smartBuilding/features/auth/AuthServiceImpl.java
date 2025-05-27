@@ -53,7 +53,7 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class AuthServiceImpl implements AuthService{
+public class AuthServiceImpl implements AuthService {
 
     private final String TOKEN_TYPE = "Bearer";
 
@@ -85,7 +85,7 @@ public class AuthServiceImpl implements AuthService{
 
     @Autowired
     @Qualifier("jwtEncoderRefreshToken")
-    public void setJwtEnCoderRefreshToken(JwtEncoder jwtEnCoderRefreshToken){
+    public void setJwtEnCoderRefreshToken(JwtEncoder jwtEnCoderRefreshToken) {
         this.jwtEncoderRefreshToken = jwtEnCoderRefreshToken;
     }
 
@@ -95,11 +95,11 @@ public class AuthServiceImpl implements AuthService{
                 () -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid reset token!")
         );
 
-        if (emailVerification.isUsed()){
+        if (emailVerification.isUsed()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Token already used!");
         }
 
-        if (emailVerification.getExpiryTime().isBefore(LocalDateTime.now())){
+        if (emailVerification.getExpiryTime().isBefore(LocalDateTime.now())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Token already expired!");
         }
 
@@ -145,7 +145,7 @@ public class AuthServiceImpl implements AuthService{
                 () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found")
         );
 
-        if(!passwordEncoder.matches(changePasswordRequest.oldPassword(), user.getPassword())){
+        if (!passwordEncoder.matches(changePasswordRequest.oldPassword(), user.getPassword())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Current password incorrect");
         }
 
@@ -214,19 +214,17 @@ public class AuthServiceImpl implements AuthService{
                 .map(GrantedAuthority::getAuthority)
                 .collect(Collectors.joining(" "));
 
-        log.info("log4");
-        log.info("New Scope: {}", scope);
-        log.info("Auth: {}", auth);
-
         Instant now = Instant.now();
 
         Jwt jwt = (Jwt) auth.getPrincipal();
         User user = userRepository.findByEmail(jwt.getId()).orElseThrow();
-
-        List<Integer> roomId = user.getRooms().stream().map(Room::getId).toList();
-
-//        List<Integer> roomIds = new ArrayList<>();
-//        String siteUuid = jwt.getClaim("roomId");
+        Map<String, Object> claims = jwt.getClaims();
+        claims.forEach((key, value) -> log.info("Claim Key: {}, Value: {}", key, value));
+//        Optional<Room> room = user.getRooms().stream().findFirst();
+//        List<Integer> roomId = room.map(Room::getId).stream().toList();
+        List<Long> roomId = jwt.getClaim("roomId");
+//        String roomIdClaim = jwt.getClaim("roomId");
+        log.info("ROOM ID: {}", roomId);
 //        if (siteUuid != null){
 //            sitesUuid = List.of(siteUuid);
 //        } else {
@@ -242,8 +240,8 @@ public class AuthServiceImpl implements AuthService{
                 .subject("Access Token")
                 .expiresAt(now.plus(15, ChronoUnit.MINUTES))
                 .claim("scope", scope)
-                .claim("id",user.getId())
-                .claim("isEnabledTwoFA",user.getIsTwoFactorEnabled())
+                .claim("id", user.getId())
+                .claim("isEnabledTwoFA", user.getIsTwoFactorEnabled())
                 .claim("roomId", roomId)
                 .build();
 
@@ -260,6 +258,7 @@ public class AuthServiceImpl implements AuthService{
                     .issuer("web")
                     .audience(List.of("nextjs", "reactjs"))
                     .subject("Refresh Token")
+                    .claim("roomId", roomId)
                     .expiresAt(now.plus(7, ChronoUnit.DAYS))
                     .build();
             JwtEncoderParameters jwtEncoderParametersRefreshToken = JwtEncoderParameters.from(jwtClaimsSetRefreshToken);
@@ -306,12 +305,13 @@ public class AuthServiceImpl implements AuthService{
 //            );
 //        }
 
-        if(LocalDateTime.now().isAfter(emailVerification.getExpiryTime())){
+        if (LocalDateTime.now().isAfter(emailVerification.getExpiryTime())) {
             throw new ResponseStatusException(
                     HttpStatus.UNAUTHORIZED,
                     "Verification Expired"
             );
-        };
+        }
+        ;
         user.setIsDeleted(false);
         user.setIsVerified(true);
         userRepository.save(user);
@@ -328,7 +328,7 @@ public class AuthServiceImpl implements AuthService{
         User user = userRepository.findByEmail(loginRequest.email())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
-        if (user.getIsTwoFactorEnabled()){
+        if (user.getIsTwoFactorEnabled()) {
             return ResponseEntity.ok(JwtResponse.builder()
                     .tokenType("")
                     .accessToken("")
@@ -336,7 +336,8 @@ public class AuthServiceImpl implements AuthService{
                     .build());
         }
 
-        List<Integer> roomId = user.getRooms().stream().map(Room::getId).toList();
+        Optional<Room> room = user.getRooms().stream().findFirst();
+        List<Integer> roomId = room.map(Room::getId).stream().toList();
 
         auth = daoAuthenticationProvider.authenticate(auth);
 
@@ -359,12 +360,12 @@ public class AuthServiceImpl implements AuthService{
                 .id(auth.getName())
                 .issuedAt(now)
                 .issuer("web")
-                .audience(List.of("nextjs","reactjs"))
+                .audience(List.of("nextjs", "reactjs"))
                 .subject("Access Token")
                 .expiresAt(now.plus(15, ChronoUnit.MINUTES))
                 .claim("scope", scope)
                 .claim("id", user.getId())
-                .claim("isEnabledTwoFA",user.getIsTwoFactorEnabled())
+                .claim("isEnabledTwoFA", user.getIsTwoFactorEnabled())
                 .claim("roomId", roomId)
                 .build();
 
@@ -373,8 +374,9 @@ public class AuthServiceImpl implements AuthService{
                 .id(auth.getName())
                 .issuedAt(now)
                 .issuer("web")
-                .audience(List.of("nextjs","reactjs"))
+                .audience(List.of("nextjs", "reactjs"))
                 .subject("Refresh Token")
+                .claim("roomId", roomId)
                 .expiresAt(now.plus(7, ChronoUnit.DAYS))
                 .build();
 
@@ -407,14 +409,14 @@ public class AuthServiceImpl implements AuthService{
     @Override
     public void register(CreateUserRegister createUserRegister) throws MessagingException {
 
-        if (userRepository.existsByEmail(createUserRegister.email())){
+        if (userRepository.existsByEmail(createUserRegister.email())) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
                     "Email already exists!"
             );
         }
 
-        if (!createUserRegister.password().equals(createUserRegister.confirmPassword())){
+        if (!createUserRegister.password().equals(createUserRegister.confirmPassword())) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Passwords and confirm passwords do not match!"
@@ -479,21 +481,22 @@ public class AuthServiceImpl implements AuthService{
     public MessageResponse verify2FA(Integer code) {
         Integer userId = authUtil.loggedUserId();
         boolean isValid = userService.validate2FACode(userId, code);
-        if (isValid){
+        if (isValid) {
             userService.enable2FA(userId);
             return MessageResponse.builder()
                     .message("Verified 2FA")
                     .build();
-        }else {
+        } else {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid 2FA code");
         }
     }
 
     @Override
     public JwtResponse verify2FALogin(Integer code, String email, HttpServletResponse response) {
-        User user = userRepository.findByEmail(email).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));;
+        User user = userRepository.findByEmail(email).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        ;
         boolean isValid = userService.validate2FACode(user.getId(), code);
-        if (isValid){
+        if (isValid) {
 
             userService.enable2FA(user.getId());
 
@@ -512,12 +515,12 @@ public class AuthServiceImpl implements AuthService{
                     .id(user.getEmail())
                     .issuedAt(now)
                     .issuer("web")
-                    .audience(List.of("nextjs","reactjs"))
+                    .audience(List.of("nextjs", "reactjs"))
                     .subject("Access Token")
                     .expiresAt(now.plus(15, ChronoUnit.MINUTES))
                     .claim("scope", scope)
                     .claim("id", user.getId())
-                    .claim("isEnabledTwoFA",user.getIsTwoFactorEnabled())
+                    .claim("isEnabledTwoFA", user.getIsTwoFactorEnabled())
                     .claim("roomId", roomId)
                     .build();
 
@@ -526,7 +529,7 @@ public class AuthServiceImpl implements AuthService{
                     .id(email)
                     .issuedAt(now)
                     .issuer("web")
-                    .audience(List.of("nextjs","reactjs"))
+                    .audience(List.of("nextjs", "reactjs"))
                     .subject("Refresh Token")
                     .expiresAt(now.plus(7, ChronoUnit.DAYS))
                     .build();
@@ -550,7 +553,7 @@ public class AuthServiceImpl implements AuthService{
             return JwtResponse.builder()
                     .accessToken(accessToken)
                     .build();
-        }else {
+        } else {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid 2FA code");
         }
     }
@@ -562,20 +565,18 @@ public class AuthServiceImpl implements AuthService{
     }
 
     @Override
-    public MessageResponse verifySites(String uuid, String token, HttpServletResponse response) {
+    public MessageResponse changeRoom(Integer id, HttpServletResponse response) {
+        User user = authUtil.loggedUser();
 
-//        String email = jwtUtils.getEmailFromToken(token);
-//        User user = userRepository.findByEmail(email).get();
-//
-//        boolean isValidSite = user.getFloors().stream()
-//                .anyMatch(site -> site.getUuid().equals(uuid));
-//
-//        if (!isValidSite){
-//            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid site uuid");
-//        }
-//
-//        Instant now = Instant.now();
-//
+        boolean isValidSite = user.getRooms().stream()
+                .anyMatch(room -> room.getId().equals(id));
+
+        if (!isValidSite) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid Room ID!");
+        }
+
+        Instant now = Instant.now();
+
 //        // Create refresh token claims set
 //        JwtClaimsSet jwtClaimsSetRefreshToken = JwtClaimsSet.builder()
 //                .id(user.getEmail())
@@ -586,26 +587,35 @@ public class AuthServiceImpl implements AuthService{
 //                .expiresAt(now.plus(7, ChronoUnit.DAYS))
 //                .claim("site", uuid)
 //                .build();
-//
-//        JwtEncoderParameters jwtEncoderParametersRefreshToken = JwtEncoderParameters.from(jwtClaimsSetRefreshToken);
-//        Jwt jwtRefreshToken = jwtEncoderRefreshToken.encode(jwtEncoderParametersRefreshToken);
-//        String refreshToken = jwtRefreshToken.getTokenValue();
-//
-//        // Set refresh token as an httpOnly cookie
-//        ResponseCookie refreshTokenCookie = ResponseCookie.from("refreshToken", refreshToken)
-//                .httpOnly(true)
-//                .secure(true)
-//                .path("/")
-//                .maxAge(7 * 24 * 60 * 60)
-//                .build();
-//
-//        response.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString());
-//
-//        return MessageResponse.builder()
-//                .message("Verified site!")
-//                .build();
 
-        return null;
+        // Create refresh token claims set
+        JwtClaimsSet jwtClaimsSetRefreshToken = JwtClaimsSet.builder()
+                .id(user.getEmail())
+                .issuedAt(now)
+                .issuer("web")
+                .audience(List.of("nextjs", "reactjs"))
+                .subject("Refresh Token")
+                .claim("roomId", List.of(id))
+                .expiresAt(now.plus(7, ChronoUnit.DAYS))
+                .build();
+//
+        JwtEncoderParameters jwtEncoderParametersRefreshToken = JwtEncoderParameters.from(jwtClaimsSetRefreshToken);
+        Jwt jwtRefreshToken = jwtEncoderRefreshToken.encode(jwtEncoderParametersRefreshToken);
+        String refreshToken = jwtRefreshToken.getTokenValue();
+
+        // Set refresh token as an httpOnly cookie
+        ResponseCookie refreshTokenCookie = ResponseCookie.from("refreshToken", refreshToken)
+                .httpOnly(true)
+                .secure(true)
+                .path("/")
+                .maxAge(7 * 24 * 60 * 60)
+                .build();
+
+        response.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString());
+
+        return MessageResponse.builder()
+                .message("Verified Room!")
+                .build();
     }
 
     @Autowired

@@ -5,8 +5,8 @@ import lombok.Builder;
 import java.util.List;
 
 @Builder
-public record SeriesResponse(
-        String name,
-        List<Double> data
+public record StatusDeviceResponse(
+        List<Long> series,
+        List<String> labels
 ) {
 }

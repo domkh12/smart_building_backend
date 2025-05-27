@@ -75,9 +75,21 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserDetailResponse findUserById(Integer id) {
-        User user = userRepository.findById(id).orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found!")
-        );
+        boolean isAdmin = authUtil.isAdminLoggedUser();
+        boolean isManager = authUtil.isManagerLoggedUser();
+        List<Long> roomIds = authUtil.roomIdOfLoggedUser();
+        User user = new User();
+
+        if (isManager ) {
+            user = userRepository.findById(id).orElseThrow(
+                    () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found!")
+            );
+        }else if (isAdmin) {
+            user = userRepository.findUserByIdAndRoomIdsUserRole(id, roomIds).orElseThrow(
+                    () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found!")
+            );
+        }
+
         return userMapper.toUserDetailResponse(user);
     }
 
@@ -258,7 +270,7 @@ public class UserServiceImpl implements UserService {
         }
 
         if (!updateUserRequest.isDeleted()) {
-            user.setStatus(String.valueOf(Status.Active));
+            user.setStatus(String.valueOf(Status.ACTIVE));
         } else {
             user.setStatus(String.valueOf(Status.Banned));
         }
@@ -338,7 +350,7 @@ public class UserServiceImpl implements UserService {
             user.setIsAccountNonLocked(true);
             user.setIsAccountNonExpired(true);
             user.setIsCredentialsNonExpired(true);
-            user.setStatus(String.valueOf(Status.Active));
+            user.setStatus(String.valueOf(Status.ACTIVE));
             user.setSignUpMethod(signUpMethodRepository.findByName("CUSTOM").orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Sign up method not found")));
             user.setIsOnline(false);
             user.setIsTwoFactorEnabled(false);
@@ -371,7 +383,7 @@ public class UserServiceImpl implements UserService {
             user.setIsAccountNonLocked(true);
             user.setIsAccountNonExpired(true);
             user.setIsCredentialsNonExpired(true);
-            user.setStatus(String.valueOf(Status.Active));
+            user.setStatus(String.valueOf(Status.ACTIVE));
             user.setSignUpMethod(signUpMethodRepository.findByName("CUSTOM").orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Sign up method not found")));
             user.setIsOnline(false);
             user.setIsTwoFactorEnabled(false);

@@ -1,13 +1,13 @@
 package edu.npic.smartBuilding.features.room.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
-import edu.npic.smartBuilding.features.device.dto.DeviceResponseForRoom;
+import edu.npic.smartBuilding.features.device.dto.DeviceResponse;
 import edu.npic.smartBuilding.features.floor.dto.FloorResponse;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
-public record RoomResponse (
+public record RoomResponseGetById(
         Integer id,
         String name,
         Integer devicesQty,
@@ -15,6 +15,6 @@ public record RoomResponse (
         @JsonFormat(pattern = "dd/MMM/yyyy hh:mma")
         LocalDateTime createdAt,
         FloorResponse floor,
-        List<DeviceResponseForRoom> devices
-){
+        List<DeviceResponse> devices
+) {
 }

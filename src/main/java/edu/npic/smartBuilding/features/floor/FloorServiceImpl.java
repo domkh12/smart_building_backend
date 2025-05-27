@@ -7,6 +7,8 @@ import edu.npic.smartBuilding.features.building.BuildingRepository;
 import edu.npic.smartBuilding.features.floor.dto.FloorNameResponse;
 import edu.npic.smartBuilding.features.floor.dto.FloorRequest;
 import edu.npic.smartBuilding.features.floor.dto.FloorResponse;
+import edu.npic.smartBuilding.features.room.RoomRepository;
+import edu.npic.smartBuilding.features.room.RoomService;
 import edu.npic.smartBuilding.mapper.FloorMapper;
 import edu.npic.smartBuilding.util.AuthUtil;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +35,7 @@ public class FloorServiceImpl implements FloorService{
     private final BuildingRepository buildingRepository;
     private final FloorRepository floorRepository;
     private final AuthUtil authUtil;
+    private final RoomRepository roomRepository;
 
     @Override
     public FloorResponse findFloorById(int id) {
@@ -47,7 +50,11 @@ public class FloorServiceImpl implements FloorService{
         Floor floor = floorRepository.findById(id).orElseThrow(
                 () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Floor not found!")
         );
+        Building building = buildingRepository.findById(floorRequest.buildingId()).orElseThrow(
+                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Building not found!")
+        );
         floorMapper.fromFloorRequestUpdate(floorRequest, floor);
+        floor.setBuilding(building);
         Floor savedFloor = floorRepository.save(floor);
         return floorMapper.toFloorResponse(savedFloor);
     }
@@ -78,6 +85,16 @@ public class FloorServiceImpl implements FloorService{
         Floor floor = floorRepository.findById(id).orElseThrow(
                 () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Floor not found!")
         );
+
+        List<Room> rooms = floor.getRooms();
+        for (Room room : rooms) {
+            roomRepository.deleteByRoomById(room.getId());
+            floor.setRoomQty(floor.getRoomQty() - 1);
+        }
+        floor.setRooms(new ArrayList<>());
+        Building building = floor.getBuilding();
+        building.setFloorQty(building.getFloorQty() - 1);
+        buildingRepository.save(building);
         floorRepository.delete(floor);
     }
 

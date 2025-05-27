@@ -1,6 +1,5 @@
 package edu.npic.smartBuilding.features.room;
 
-import edu.npic.smartBuilding.base.Status;
 import edu.npic.smartBuilding.domain.*;
 import edu.npic.smartBuilding.features.device.DeviceRepository;
 import edu.npic.smartBuilding.features.deviceType.DeviceTypeRepository;
@@ -9,6 +8,8 @@ import edu.npic.smartBuilding.features.floor.FloorRepository;
 import edu.npic.smartBuilding.features.room.dto.RoomNameResponse;
 import edu.npic.smartBuilding.features.room.dto.RoomRequest;
 import edu.npic.smartBuilding.features.room.dto.RoomResponse;
+import edu.npic.smartBuilding.features.room.dto.RoomResponseGetById;
+import edu.npic.smartBuilding.features.user.UserRepository;
 import edu.npic.smartBuilding.mapper.DeviceMapper;
 import edu.npic.smartBuilding.mapper.RoomMapper;
 import edu.npic.smartBuilding.util.AuthUtil;
@@ -35,6 +36,7 @@ public class RoomServiceImpl implements RoomService {
     private final DeviceTypeRepository deviceTypeRepository;
     private final DeviceRepository deviceRepository;
     private final EventRepository eventRepository;
+    private final UserRepository userRepository;
     private final AuthUtil authUtil;
 
     @Override
@@ -43,15 +45,15 @@ public class RoomServiceImpl implements RoomService {
                 () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Room not found!")
         );
         Floor floor = room.getFloor();
+        roomRepository.deleteByRoomById(room.getId());
         if (floor != null) {
             floor.setRoomQty(floor.getRoomQty() - 1);
             floorRepository.save(floor);
         }
-        roomRepository.delete(room);
     }
 
     @Override
-    public RoomResponse getRoomById(Integer id) {
+    public RoomResponseGetById getRoomById(Integer id) {
         boolean isAdmin = authUtil.isAdminLoggedUser();
         boolean isManager = authUtil.isManagerLoggedUser();
         boolean isUser = authUtil.isUserLoggedUser();
@@ -77,7 +79,7 @@ public class RoomServiceImpl implements RoomService {
                     .toList();
             device.setEvents(sortedLimitedEvents);
         });
-        return roomMapper.toRoomResponse(room);
+        return roomMapper.toRoomResponseGetById(room);
     }
 
     @Override
@@ -124,20 +126,20 @@ public class RoomServiceImpl implements RoomService {
         boolean isAdmin = authUtil.isAdminLoggedUser();
         boolean isManager = authUtil.isManagerLoggedUser();
         boolean isUser = authUtil.isUserLoggedUser();
-        List<Long> roomIds = authUtil.roomIdOfLoggedUser();
+        Integer userId = authUtil.loggedUserId();
         List<Room> rooms = new ArrayList<>();
 
         if (isAdmin || isUser) {
-            roomIds.forEach(roomId -> {
-                Room room = roomRepository.findById(roomId.intValue()).orElseThrow(
-                        () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Room not found!")
-                );
+            User user = userRepository.findById(userId).orElseThrow(
+                    () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found!")
+            );
+            user.getRooms().forEach(room -> {
                 rooms.add(room);
             });
+
         } else if (isManager) {
             rooms.addAll(roomRepository.findAll());
         }
-
 
         return rooms.stream().map(roomMapper::toRoomNameResponse).toList();
     }
@@ -176,8 +178,6 @@ public class RoomServiceImpl implements RoomService {
                 () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Floor not found!")
         );
 
-        floor.setRoomQty(floor.getRoomQty() + 1);
-
         Room room = roomMapper.fromRoomRequest(roomRequest);
         room.setUuid(UUID.randomUUID().toString());
         room.setCreatedAt(LocalDateTime.now());
@@ -185,6 +185,7 @@ public class RoomServiceImpl implements RoomService {
         room.setFloor(floor);
 
         roomRepository.save(room);
+        floor.setRoomQty(floor.getRoomQty() + 1);
         floorRepository.save(floor);
 
         return roomMapper.toRoomResponse(room);

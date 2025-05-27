@@ -1,6 +1,7 @@
 package edu.npic.smartBuilding.features.device;
 
 import edu.npic.smartBuilding.base.DeviceStatus;
+import edu.npic.smartBuilding.base.MessageType;
 import edu.npic.smartBuilding.domain.*;
 import edu.npic.smartBuilding.features.building.BuildingRepository;
 import edu.npic.smartBuilding.features.device.dto.DeviceRequest;
@@ -9,6 +10,7 @@ import edu.npic.smartBuilding.features.hardware.dto.DeviceResponseHardware;
 import edu.npic.smartBuilding.features.device.dto.DevicesRequest;
 import edu.npic.smartBuilding.features.deviceType.DeviceTypeRepository;
 import edu.npic.smartBuilding.features.event.EventRepository;
+import edu.npic.smartBuilding.features.message.dto.MessageRequest;
 import edu.npic.smartBuilding.features.room.RoomRepository;
 import edu.npic.smartBuilding.mapper.DeviceMapper;
 import edu.npic.smartBuilding.util.AuthUtil;
@@ -19,6 +21,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -32,7 +35,7 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class DeviceServiceImpl implements DeviceService{
+public class DeviceServiceImpl implements DeviceService {
 
     private final DeviceRepository deviceRepository;
     private final DeviceMapper deviceMapper;
@@ -41,6 +44,42 @@ public class DeviceServiceImpl implements DeviceService{
     private final RoomRepository roomRepository;
     private final BuildingRepository buildingRepository;
     private final AuthUtil authUtil;
+    private final SimpMessagingTemplate messagingTemplate;
+
+    @Override
+    public void updateStatusDeviceByRoomId(Integer roomId, DeviceStatus status) {
+        List<Device> devices = deviceRepository.findByRoom_Id(roomId);
+        List<MessageRequest> messageRequests = new ArrayList<>();
+        for (Device device : devices) {
+            if (device.getDeviceType().getControllable() == true) {
+                if (status == DeviceStatus.Inactive) {
+                    Event event = new Event();
+                    event.setDevice(device);
+                    event.setUuid(UUID.randomUUID().toString());
+                    event.setCreatedAt(LocalDateTime.now());
+                    event.setValue("0");
+                    device.setEvents(eventRepository.saveAll(List.of(event)));
+                    messageRequests.add(MessageRequest.builder()
+                            .deviceId(device.getId().toString())
+                            .messageType("SWITCH")
+                            .value("0")
+                            .status(status)
+                            .build());
+                }
+            }
+            device.setStatus(status);
+            deviceRepository.save(device);
+            messageRequests.add(MessageRequest.builder()
+                    .deviceId(device.getId().toString())
+                    .messageType(device.getDeviceType().getName().toString().toUpperCase())
+                    .value((status == DeviceStatus.Active ? "ONLINE" : "OFFLINE"))
+                    .status(status)
+                    .build());
+
+        }
+
+        messagingTemplate.convertAndSend("/topic/messages/" + roomId, messageRequests);
+    }
 
     @Override
     public DeviceResponse getDeviceId(Integer id) {
@@ -49,11 +88,11 @@ public class DeviceServiceImpl implements DeviceService{
         List<Long> roomIds = authUtil.roomIdOfLoggedUser();
 
         Device device = new Device();
-        if (isManager){
+        if (isManager) {
             device = deviceRepository.findById(id).orElseThrow(
                     () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Device not found!")
             );
-        }else if (isAdmin){
+        } else if (isAdmin) {
             device = deviceRepository.findDeviceByIdAndRoomIds(id, roomIds).orElseThrow(
                     () -> new ResponseStatusException(HttpStatus.FORBIDDEN, "You don't have permission to view this device")
             );
@@ -68,9 +107,9 @@ public class DeviceServiceImpl implements DeviceService{
         boolean isAdmin = authUtil.isAdminLoggedUser();
         List<Long> roomIds = authUtil.roomIdOfLoggedUser();
 
-        if(pageNo < 0){
+        if (pageNo < 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Page number must be greater than zero");
-        }else if(pageSize < 0){
+        } else if (pageSize < 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Page size must be greater than zero");
         }
 
@@ -78,7 +117,7 @@ public class DeviceServiceImpl implements DeviceService{
         PageRequest pageRequest = PageRequest.of(pageNo - 1, pageSize, sort);
 
         List<Integer> deviceTypeIds = null;
-        if (!deviceTypeId.isEmpty()){
+        if (!deviceTypeId.isEmpty()) {
             deviceTypeIds = deviceTypeId;
         }
 
@@ -89,9 +128,9 @@ public class DeviceServiceImpl implements DeviceService{
 
         Page<Device> devices = Page.empty();
 
-        if (isManager){
+        if (isManager) {
             devices = deviceRepository.filterDevice(keywords, deviceTypeIds, buildingIds, pageRequest);
-        }else if (isAdmin){
+        } else if (isAdmin) {
             devices = deviceRepository.filterDeviceRoleAdmin(keywords, deviceTypeIds, buildingIds, roomIds, pageRequest);
         }
 
@@ -130,7 +169,7 @@ public class DeviceServiceImpl implements DeviceService{
     @Override
     public List<DeviceResponse> createManyDevices(DevicesRequest devicesRequest) {
 
-      List<Device> devices = devicesRequest.devices().stream().map(device -> {
+        List<Device> devices = devicesRequest.devices().stream().map(device -> {
             Device device1 = deviceMapper.fromDeviceRequest(device);
             DeviceType deviceType = deviceTypeRepository.findById(device.deviceTypeId()).orElseThrow(
                     () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "DeviceType not found!")
@@ -148,7 +187,7 @@ public class DeviceServiceImpl implements DeviceService{
             // increase device qty in room
             room.setDevicesQty(room.getDevicesQty() + 1);
             roomRepository.save(room);
-          return deviceRepository.save(device1);
+            return deviceRepository.save(device1);
         }).toList();
 
         return devices.stream().map(deviceMapper::toDeviceResponse).toList();
@@ -176,21 +215,21 @@ public class DeviceServiceImpl implements DeviceService{
         boolean isAdmin = authUtil.isAdminLoggedUser();
         List<Long> roomIds = authUtil.roomIdOfLoggedUser();
 
-        if (pageNo <= 0){
+        if (pageNo <= 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Page number must be more than 0");
         }
-        if (pageSize <= 0){
+        if (pageSize <= 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Page Size must be more than 0");
         }
 
         Sort sort = Sort.by(Sort.Direction.DESC, "id");
-        PageRequest pageRequest = PageRequest.of(pageNo - 1 , pageSize, sort);
+        PageRequest pageRequest = PageRequest.of(pageNo - 1, pageSize, sort);
 
         Page<Device> devicePage = Page.empty();
 
-        if (isManager){
+        if (isManager) {
             devicePage = deviceRepository.findAll(pageRequest);
-        }else if (isAdmin){
+        } else if (isAdmin) {
             devicePage = deviceRepository.findDeviceByRoomIds(roomIds, pageRequest);
         }
 

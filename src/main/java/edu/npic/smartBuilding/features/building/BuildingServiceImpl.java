@@ -4,6 +4,8 @@ import edu.npic.smartBuilding.domain.Building;
 import edu.npic.smartBuilding.features.building.dto.BuildingNameResponse;
 import edu.npic.smartBuilding.features.building.dto.BuildingRequest;
 import edu.npic.smartBuilding.features.building.dto.BuildingResponse;
+import edu.npic.smartBuilding.features.floor.FloorService;
+import edu.npic.smartBuilding.features.room.RoomService;
 import edu.npic.smartBuilding.mapper.BuildingMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -14,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -23,6 +26,8 @@ public class BuildingServiceImpl implements BuildingService{
 
     private final BuildingRepository buildingRepository;
     private final BuildingMapper buildingMapper;
+    private final RoomService roomService;
+    private final FloorService floorService;
 
     @Override
     public BuildingResponse getBuildingById(Integer id) {
@@ -45,6 +50,12 @@ public class BuildingServiceImpl implements BuildingService{
         Building building = buildingRepository.findById(id).orElseThrow(
                 () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Building not found")
         );
+
+        building.getFloors().forEach(floor -> {
+            floorService.deleteFloor(floor.getId());
+        });
+
+        building.setFloors(new ArrayList<>());
 
         buildingRepository.delete(building);
     }

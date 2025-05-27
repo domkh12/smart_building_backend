@@ -3,6 +3,7 @@ package edu.npic.smartBuilding.features.room;
 import edu.npic.smartBuilding.features.room.dto.RoomNameResponse;
 import edu.npic.smartBuilding.features.room.dto.RoomRequest;
 import edu.npic.smartBuilding.features.room.dto.RoomResponse;
+import edu.npic.smartBuilding.features.room.dto.RoomResponseGetById;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -29,7 +30,7 @@ public class RoomController {
     @PreAuthorize("hasAnyAuthority('ROLE_MANAGER','ROLE_USER', 'ROLE_ADMIN')")
     @GetMapping("/{id}")
     @ResponseStatus(HttpStatus.OK)
-    RoomResponse getRoomById(@PathVariable Integer id) {
+    RoomResponseGetById getRoomById(@PathVariable Integer id) {
         return roomService.getRoomById(id);
     }
 

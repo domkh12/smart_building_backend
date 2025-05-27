@@ -7,11 +7,21 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.Optional;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, Integer> {
+
+    @Query("select count(u) from User u where u.createdAt between ?1 and ?2")
+    long countUserByDate(LocalDateTime createdAtStart, LocalDateTime createdAtEnd);
+
+
+    @Query("""
+            select u from User u inner join u.rooms rooms inner join u.roles roles
+            where u.id = ?1 and rooms.id in ?2 and upper(roles.name) = upper('USER')""")
+    Optional<User> findUserByIdAndRoomIdsUserRole(Integer id, Collection<Long> ids);
 
     @Query("""
             select u from User u inner join u.roles roles inner join u.rooms rooms

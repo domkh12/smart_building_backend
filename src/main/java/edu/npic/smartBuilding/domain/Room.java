@@ -37,4 +37,7 @@ public class Room {
 
     @ManyToOne
     private Floor floor;
+
+    @ManyToMany(mappedBy = "rooms")
+    private List<User> users;
 }

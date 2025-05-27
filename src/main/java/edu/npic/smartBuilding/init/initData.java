@@ -259,7 +259,7 @@ public class initData {
         user.setIsOnline(false);
         user.setSignUpMethod(signUpMethodRepository.findByName("CUSTOM").get());
         user.setIsTwoFactorEnabled(false);
-        user.setStatus(String.valueOf(Status.Active));
+        user.setStatus(String.valueOf(Status.ACTIVE));
 
         List<Role> roles = new ArrayList<>();
         // Ensure roles exist

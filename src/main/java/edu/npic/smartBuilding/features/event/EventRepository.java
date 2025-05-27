@@ -14,6 +14,19 @@ import java.util.Optional;
 
 @Repository
 public interface EventRepository extends JpaRepository<Event, Integer> {
+    @Query("select e from Event e where upper(e.device.deviceType.name) = upper(?1)")
+    List<Event> findByDevice_DeviceType_NameIgnoreCase(String name);
+
+
+    @Query("""
+        SELECT SUM(CAST(e.value AS DOUBLE)) 
+            FROM Event e
+                WHERE e.createdAt BETWEEN ?1 AND ?2
+                    AND upper(e.device.deviceType.name) = upper('POWER') 
+                        GROUP BY FUNCTION('DATE', e.createdAt)
+                            ORDER BY FUNCTION('DATE', e.createdAt)
+    """)
+    List<Double> getValuePowerEventByDate(LocalDateTime createdAtStart, LocalDateTime createdAtEnd);
 
     Event findByDevice_Id(Integer id);
 

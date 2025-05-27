@@ -47,10 +47,11 @@ public class AuthController {
         return authService.updateProfileUser(updateProfileUserRequest);
     }
 
-    @PostMapping("/verify-sites")
+    @PreAuthorize("hasAuthority('ROLE_USER')")
+    @PostMapping("/change-rooms/{id}")
     @ResponseStatus(HttpStatus.CREATED)
-    MessageResponse verifySites(@RequestParam String uuid,@RequestParam String token, HttpServletResponse response){
-        return authService.verifySites(uuid, token, response);
+    MessageResponse changeRoom(@PathVariable Integer id, HttpServletResponse response){
+        return authService.changeRoom(id, response);
     }
 
     @PreAuthorize("hasAnyAuthority('ROLE_MANAGER', 'ROLE_ADMIN', 'ROLE_USER')")

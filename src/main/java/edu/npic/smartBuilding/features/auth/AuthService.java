@@ -37,7 +37,7 @@ public interface AuthService {
 
     UserDetailResponse getProfileUser();
 
-    MessageResponse verifySites(String uuid, String token, HttpServletResponse response);
+    MessageResponse changeRoom(Integer id, HttpServletResponse response);
 
     void changePassword(ChangePasswordRequest changePasswordRequest);
 }
