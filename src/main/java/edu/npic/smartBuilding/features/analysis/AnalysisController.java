@@ -1,11 +1,13 @@
 package edu.npic.smartBuilding.features.analysis;
 
 import edu.npic.smartBuilding.features.analysis.dto.AnalysisResponse;
+import edu.npic.smartBuilding.features.analysis.dto.AnalysisRoomResponse;
 import edu.npic.smartBuilding.features.analysis.dto.PowerAnalysisResponse;
 import edu.npic.smartBuilding.features.analysis.dto.TotalCountResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.parameters.P;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -17,6 +19,17 @@ import java.util.List;
 @RequiredArgsConstructor
 public class AnalysisController {
     private final AnalysisService analysisService;
+
+    @PreAuthorize("hasAuthority('ROLE_USER')")
+    @GetMapping("/rooms/{roomId}")
+    @ResponseStatus(HttpStatus.OK)
+    List<AnalysisRoomResponse> getAnalysisByRoomId(
+                        @PathVariable Integer roomId,
+                        @RequestParam LocalDate date_from,
+                        @RequestParam LocalDate date_to
+    ) {
+        return analysisService.getAnalysisByRoomId(roomId, date_from, date_to);
+    }
 
     @PreAuthorize("hasAnyAuthority('ROLE_MANAGER', 'ROLE_ADMIN')")
     @GetMapping

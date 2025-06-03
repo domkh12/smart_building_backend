@@ -1,6 +1,7 @@
 package edu.npic.smartBuilding.features.analysis;
 
 import edu.npic.smartBuilding.features.analysis.dto.AnalysisResponse;
+import edu.npic.smartBuilding.features.analysis.dto.AnalysisRoomResponse;
 import edu.npic.smartBuilding.features.analysis.dto.PowerAnalysisResponse;
 import edu.npic.smartBuilding.features.analysis.dto.TotalCountResponse;
 
@@ -9,6 +10,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 public interface AnalysisService {
+    List<AnalysisRoomResponse> getAnalysisByRoomId(Integer roomId, LocalDate dateFrom, LocalDate dateTo);
+
     AnalysisResponse getAnalysis(LocalDate dateFrom, LocalDate dateTo);
 
     TotalCountResponse getTotalCounts();

@@ -2,6 +2,7 @@ package edu.npic.smartBuilding.features.analysis;
 
 import edu.npic.smartBuilding.base.DeviceStatus;
 import edu.npic.smartBuilding.domain.Building;
+import edu.npic.smartBuilding.domain.Device;
 import edu.npic.smartBuilding.domain.Event;
 import edu.npic.smartBuilding.features.analysis.dto.*;
 import edu.npic.smartBuilding.features.building.BuildingRepository;
@@ -24,6 +25,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -43,6 +45,59 @@ public class AnalysisServiceImpl implements AnalysisService {
     private final EventRepository eventRepository;
     private final AuthUtil authUtil;
     private final FloorRepository floorRepository;
+
+    @Override
+    public List<AnalysisRoomResponse> getAnalysisByRoomId(Integer roomId, LocalDate dateFrom, LocalDate dateTo) {
+
+        List<Device> devices = deviceRepository.findByRoom_Id(roomId);
+        List<AnalysisRoomResponse> analysisRoomResponses = devices.stream()
+                .map(device -> {
+                    List<Event> events = eventRepository.findByDevice_IdAndCreatedAtBetween(device.getId(), dateFrom.atStartOfDay(), dateTo.atStartOfDay());
+
+//                    if (!device.getDeviceType().getControllable()) {
+//                        Map<LocalDate, Double> dailySum = events.stream()
+//                                .collect(Collectors.groupingBy(
+//                                        event -> event.getCreatedAt().toLocalDate(),
+//                                        Collectors.summingDouble(event -> Double.parseDouble(event.getValue()))
+//                                ));
+//
+//                        List<Double> data = new ArrayList<>(dailySum.values());
+//                        List<String> timestamps = dailySum.keySet().stream()
+//                                .sorted()
+//                                .map(date -> date.format(DateTimeFormatter.ofPattern("dd/MMM/yy")))
+//                                .toList();
+//
+//                        return AnalysisRoomResponse.builder()
+//                                .deviceName(device.getName())
+//                                .controllable(false)
+//                                .series(List.of(
+//                                        SeriesResponse.builder()
+//                                                .data(data)
+//                                                .build()
+//                                ))
+//                                .xAxis(timestamps)
+//                                .build();
+//                    }
+
+                    List<Double> data = events.stream().map(e -> Double.valueOf(e.getValue())).collect(Collectors.toList());
+                    List<String> timestamps = events.stream().map(e -> e.getCreatedAt().format(DateTimeFormatter.ofPattern("dd/MMM/yy HH:mm:ss"))).toList();
+
+                    return AnalysisRoomResponse.builder()
+                            .deviceName(device.getName())
+                            .controllable(device.getDeviceType().getControllable())
+                            .series(List.of(
+                                    SeriesResponse.builder()
+                                            .data(data)
+                                            .build()
+                            ))
+                            .xAxis(timestamps)
+                            .build();
+                })
+                .toList();
+
+        return analysisRoomResponses;
+    }
+
 
     @Override
     public AnalysisResponse getAnalysis(LocalDate dateFrom, LocalDate dateTo) {
@@ -71,7 +126,7 @@ public class AnalysisServiceImpl implements AnalysisService {
             xAxis = DateUtil.calculateDuration(dateFrom, dateTo);
             series.add(SeriesResponse.builder()
                             .name("Power")
-                            .data(eventRepository.getValuePowerEventByDate(dateFrom.atStartOfDay(), dateTo.atStartOfDay()))
+//                            .data(eventRepository.getValuePowerEventByDate(dateFrom.atStartOfDay(), dateTo.atStartOfDay()))
                     .build());
             statusDeviceCount.add(0, deviceRepository.countDeviceByStatus(DeviceStatus.Active));
             statusDeviceCount.add(1, deviceRepository.countDeviceByStatus(DeviceStatus.Inactive));

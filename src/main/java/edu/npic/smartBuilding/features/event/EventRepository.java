@@ -14,6 +14,14 @@ import java.util.Optional;
 
 @Repository
 public interface EventRepository extends JpaRepository<Event, Integer> {
+
+    @Query("select e from Event e where e.device.id = ?1 and e.createdAt between ?2 and ?3")
+    List<Event> findByDevice_IdAndCreatedAtBetween(Integer id, LocalDateTime createdAtStart, LocalDateTime createdAtEnd);
+
+
+    @Query("select e from Event e where e.device.id = ?1")
+    List<Event> getEventByDeviceId(Integer id);
+
     @Query("select e from Event e where upper(e.device.deviceType.name) = upper(?1)")
     List<Event> findByDevice_DeviceType_NameIgnoreCase(String name);
 
